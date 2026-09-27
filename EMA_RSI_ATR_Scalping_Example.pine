@@ -1,0 +1,53 @@
+//@version=5
+// Independent TradingView illustration based on the public SCALPFLIP EA README.
+// It is not the proprietary EA, does not reproduce its unspecified SMART mode, and is not a port.
+// Starting chart suggestion: XAUUSD M5; the strategy also works on other chart timeframes/symbols.
+// MA/RSI/volume rules below make the documented filters explicit; fixed pip exits are illustrative.
+// No strategy settings imply or guarantee profitability.
+// Tester costs default to 0.05% commission per order and 1 tick of slippage; edit in Properties.
+strategy("SCALPFLIP-style EMA + RSI Example (Independent)", overlay=true, pyramiding=0, initial_capital=10000, currency=currency.USD, commission_type=strategy.commission.percent, commission_value=0.05, slippage=1)
+
+string GROUP_SIGNAL = "Signal and filters"
+int fastMaLength = input.int(9, "Fast MA period", minval=1, group=GROUP_SIGNAL)
+int slowMaLength = input.int(21, "Slow MA period", minval=2, group=GROUP_SIGNAL)
+int trendMaLength = input.int(20, "Trend MA period", minval=1, group=GROUP_SIGNAL)
+int rsiLength = input.int(14, "RSI period", minval=1, group=GROUP_SIGNAL)
+float rsiOversold = input.float(30.0, "RSI oversold level", minval=0, maxval=100, step=0.5, group=GROUP_SIGNAL)
+float rsiOverbought = input.float(70.0, "RSI overbought level", minval=0, maxval=100, step=0.5, group=GROUP_SIGNAL)
+bool useVolumeFilter = input.bool(false, "Enable volume filter", group=GROUP_SIGNAL)
+int volumeMaLength = input.int(20, "Volume average period", minval=1, group=GROUP_SIGNAL)
+
+string GROUP_RISK = "Fixed pip exits"
+int stopLossPips = input.int(10, "Stop Loss (pips)", minval=1, group=GROUP_RISK)
+int takeProfitPips = input.int(20, "Take Profit (pips)", minval=1, group=GROUP_RISK)
+int ticksPerPip = input.int(10, "Ticks per pip (adjust for symbol/broker)", minval=1, group=GROUP_RISK)
+float orderQuantity = input.float(1.0, "Order quantity (symbol units)", minval=0.01, step=0.01, group=GROUP_RISK)
+
+// Pine requires commission and slippage arguments in strategy() to be compile-time constants.
+// Change these defaults in Strategy Settings > Properties to model a different broker.
+float fastMa = ta.ema(close, fastMaLength)
+float slowMa = ta.ema(close, slowMaLength)
+float trendMa = ta.sma(close, trendMaLength)
+float rsiValue = ta.rsi(close, rsiLength)
+float averageVolume = ta.sma(volume, volumeMaLength)
+bool volumeConfirmed = not useVolumeFilter or (not na(volume) and not na(averageVolume) and volume > averageVolume)
+bool bullishCross = ta.crossover(fastMa, slowMa)
+bool bearishCross = ta.crossunder(fastMa, slowMa)
+bool buySignal = barstate.isconfirmed and strategy.position_size == 0 and bullishCross and close > trendMa and rsiValue > 50 and rsiValue < rsiOverbought and volumeConfirmed
+bool sellSignal = barstate.isconfirmed and strategy.position_size == 0 and bearishCross and close < trendMa and rsiValue < 50 and rsiValue > rsiOversold and volumeConfirmed
+
+if buySignal
+    strategy.entry("Buy", strategy.long, qty=orderQuantity)
+    strategy.exit("Buy exit", from_entry="Buy", loss=stopLossPips * ticksPerPip, profit=takeProfitPips * ticksPerPip)
+    alert("Independent SCALPFLIP-style example: BUY signal", alert.freq_once_per_bar_close)
+
+if sellSignal
+    strategy.entry("Sell", strategy.short, qty=orderQuantity)
+    strategy.exit("Sell exit", from_entry="Sell", loss=stopLossPips * ticksPerPip, profit=takeProfitPips * ticksPerPip)
+    alert("Independent SCALPFLIP-style example: SELL signal", alert.freq_once_per_bar_close)
+
+plot(fastMa, title="Fast EMA (9)", color=color.teal, linewidth=2)
+plot(slowMa, title="Slow EMA (21)", color=color.orange, linewidth=2)
+plot(trendMa, title="Trend SMA (20)", color=color.blue, linewidth=2)
+plotshape(buySignal, title="Buy signal", style=shape.labelup, location=location.belowbar, color=color.new(color.green, 0), text="BUY", textcolor=color.white, size=size.tiny)
+plotshape(sellSignal, title="Sell signal", style=shape.labeldown, location=location.abovebar, color=color.new(color.red, 0), text="SELL", textcolor=color.white, size=size.tiny)
