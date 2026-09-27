@@ -19,7 +19,7 @@ int volumeMaLength = input.int(20, "Volume average period", minval=1, group=GROU
 
 string GROUP_RISK = "Fixed pip exits"
 int stopLossPips = input.int(30, "Stop Loss (pips)", minval=1, group=GROUP_RISK)
-int takeProfitPips = input.int(30, "Take Profit (pips)", minval=1, group=GROUP_RISK)
+int takeProfitPips = input.int(20, "Take Profit (pips)", minval=1, group=GROUP_RISK)
 int ticksPerPip = input.int(10, "Ticks per pip (adjust for symbol/broker)", minval=1, group=GROUP_RISK)
 float orderQuantity = input.float(1.0, "Order quantity (symbol units)", minval=0.01, step=0.01, group=GROUP_RISK)
 
